@@ -1,0 +1,11 @@
+{
+  "name": "scooter-mvp",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install && npm --prefix admin install",
+    "backend": "npm --prefix backend run dev",
+    "frontend": "npm --prefix frontend start",
+    "admin": "npm --prefix admin start"
+  }
+}
