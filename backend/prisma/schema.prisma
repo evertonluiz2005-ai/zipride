@@ -1,8 +1,3 @@
-// ─── Prisma Schema — ZipRide MVP ────────────────────────────────────────────
-// Banco: PostgreSQL
-// Para aplicar: npx prisma migrate dev --name init
-// Para visualizar: npx prisma studio
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,60 +7,83 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Usuários ─────────────────────────────────────────────────────────────────
 model User {
-  id         String   @id @default(uuid())
-  name       String
-  email      String   @unique
-  phone      String?
-  password   String
-  role       String   @default("user")   // "user" | "admin"
-  balance    Float    @default(20.0)
-  totalRides Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id                    String   @id @default(uuid())
+  name                  String
+  email                 String   @unique
+  phone                 String?
+  password              String?
+  role                  String   @default("user")
+  balance               Float    @default(20.0)
+  totalRides            Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  rides Ride[]
+  // ─── Stripe ───────────────────────────────────────────────────────────────
+  stripeCustomerId      String?  @unique  // Customer ID no Stripe
+  stripePaymentMethodId String?           // Cartão padrão salvo
+  cardBrand             String?           // "visa", "mastercard"...
+  cardLast4             String?           // "4242"
+  cardExpMonth          Int?
+  cardExpYear           Int?
+
+  fcmToken              String?
+  cpf                   String?  @unique
+  documentStatus        String   @default("pending")  // pending | approved | rejected
+
+  // ─── OAuth ────────────────────────────────────────────────────────────────
+  oauthProvider         String?  // "google" | "facebook"
+  oauthId               String?  // sub/id retornado pelo provider
+
+  // ─── LGPD ─────────────────────────────────────────────────────────────────
+  lgpdAcceptedAt        DateTime?
+
+  rides                 Ride[]
+  refreshTokens         RefreshToken[]
+  pixRecharges          PixRecharge[]
 
   @@map("users")
 }
 
-// ─── Zonas de geofencing ──────────────────────────────────────────────────────
-model Zone {
-  id        String  @id @default(uuid())
-  name      String
-  color     String  @default("#3B82F6")
-  radius    Int                           // metros
-  centerLat Float
-  centerLng Float
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
   createdAt DateTime @default(now())
 
-  hubs Hub[]
+  @@index([userId])
+  @@map("refresh_tokens")
+}
 
+model Zone {
+  id          String   @id @default(uuid())
+  name        String
+  color       String   @default("#3B82F6")
+  coordinates Json     // [[lat, lng], ...]
+  createdAt   DateTime @default(now())
+  hubs        Hub[]
   @@map("zones")
 }
 
-// ─── Hubs (pontos fixos) ──────────────────────────────────────────────────────
 model Hub {
-  id       String  @id @default(uuid())
+  id       String   @id @default(uuid())
   name     String
   lat      Float
   lng      Float
-  capacity Int     @default(4)
+  capacity Int      @default(4)
   zoneId   String?
-  zone     Zone?   @relation(fields: [zoneId], references: [id], onDelete: SetNull)
-
+  zone     Zone?    @relation(fields: [zoneId], references: [id], onDelete: SetNull)
   scooters Scooter[]
-
   @@map("hubs")
 }
 
-// ─── Patinetes ────────────────────────────────────────────────────────────────
 model Scooter {
-  id            String   @id               // ex: "SCT-001"
+  id            String   @id
   name          String
   model         String   @default("Segway Ninebot E2")
-  status        String   @default("available") // available | in_use | offline | maintenance
+  status        String   @default("available")
   locked        Boolean  @default(true)
   battery       Float    @default(100)
   lat           Float
@@ -73,16 +91,15 @@ model Scooter {
   totalRides    Int      @default(0)
   hubId         String?
   hub           Hub?     @relation(fields: [hubId], references: [id], onDelete: SetNull)
-  currentRideId String?                    // ID da corrida ativa (denormalizado para performance)
+  currentRideId String?
   lastUpdate    DateTime @default(now())
   createdAt     DateTime @default(now())
-
-  rides Ride[]
-
+  deviceId      String?
+  simNumber     String?
+  rides         Ride[]
   @@map("scooters")
 }
 
-// ─── Corridas ─────────────────────────────────────────────────────────────────
 model Ride {
   id          String    @id @default(uuid())
   userId      String
@@ -96,10 +113,49 @@ model Ride {
   endLat      Float?
   endLng      Float?
   cost        Float?
-  status      String    @default("active")  // active | completed | cancelled
+  status      String    @default("active")   // active | completed | cancelled
   unlockFee   Float     @default(3.0)
   pricePerMin Float     @default(0.5)
   nearestHub  String?
 
+  // ─── Stripe ───────────────────────────────────────────────────────────────
+  paymentStatus   String?  // pending | paid | failed | free
+  paymentIntentId String?  // pi_xxx do Stripe
+  paymentError    String?  // mensagem de erro se falhar
+
   @@map("rides")
+}
+
+model PixRecharge {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  amount          Float
+  paymentIntentId String?  @unique  // Reservado para integração futura com gateway
+  reference       String?  @unique  // Código legível: PIX-XXXXXX
+  pixCode         String   @default("")
+  pixQrCode       String   @default("")
+  expiresAt       DateTime
+  status          String   @default("pending") // pending | paid | rejected | expired
+  rejectedReason  String?
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@map("pix_recharges")
+}
+
+model DeviceLog {
+  id        Int      @id @default(autoincrement())
+  deviceId  String
+  lat       Float
+  lng       Float
+  battery   Float
+  voltage   Float
+  speed     Float
+  locked    Boolean
+  timestamp Int
+  createdAt DateTime @default(now())
+
+  @@index([deviceId])
+  @@map("devices_logs")
 }

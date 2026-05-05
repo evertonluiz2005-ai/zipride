@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polygon, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
@@ -79,6 +79,13 @@ export default function MapPage() {
   }, []);
 
   async function handleUnlock(scooter) {
+    const hasCard    = !!user?.stripePaymentMethodId;
+    const hasBalance = (user?.balance || 0) >= 3;
+    if (!hasCard && !hasBalance) {
+      showToast('💳 Adicione um cartão ou recarregue seu saldo Pix para andar');
+      setTimeout(() => navigate('/payment'), 1800);
+      return;
+    }
     setShowQR(scooter);
   }
 
@@ -115,6 +122,7 @@ export default function MapPage() {
       {/* Mapa */}
       <div className="map-wrapper">
         <MapContainer
+          key="map-page"
           center={CAMPO_MOURAO}
           zoom={15}
           style={{ height: '100%', width: '100%' }}
@@ -127,20 +135,21 @@ export default function MapPage() {
           {userPos && <FlyToUser pos={userPos} />}
 
           {/* Zonas */}
-          {zones.map((zone) => (
-            <Circle
-              key={zone.id}
-              center={[zone.center.lat, zone.center.lng]}
-              radius={zone.radius}
-              pathOptions={{
-                color: zone.color,
-                fillColor: zone.color,
-                fillOpacity: 0.08,
-                weight: 2,
-                dashArray: '6 4',
-              }}
-            />
-          ))}
+          {zones.map((zone) =>
+            zone.coordinates?.length >= 3 ? (
+              <Polygon
+                key={zone.id}
+                positions={zone.coordinates}
+                pathOptions={{
+                  color: zone.color,
+                  fillColor: zone.color,
+                  fillOpacity: 0.08,
+                  weight: 2,
+                  dashArray: '6 4',
+                }}
+              />
+            ) : null
+          )}
 
           {/* Hubs */}
           {hubs.map((hub) => (
@@ -228,7 +237,7 @@ export default function MapPage() {
         </div>
       )}
 
-      <BottomNav active="map" />
+      <BottomNav active="explore" />
     </div>
   );
 }

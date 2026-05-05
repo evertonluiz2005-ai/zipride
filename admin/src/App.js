@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
-import Fleet from './pages/Fleet';
-import Rides from './pages/Rides';
-import Hubs from './pages/Hubs';
-import Zones from './pages/Zones';
+import Dashboard  from './pages/Dashboard';
+import Fleet      from './pages/Fleet';
+import Rides      from './pages/Rides';
+import Hubs       from './pages/Hubs';
+import Zones      from './pages/Zones';
+import Recharges  from './pages/Recharges';
 import api from './api';
 import './App.css';
 
@@ -57,10 +58,11 @@ function Layout({ user, onLogout }) {
         <nav className="sidebar-nav">
           {[
             { to: '/dashboard', icon: '📊', label: 'Dashboard' },
-            { to: '/fleet', icon: '🛴', label: 'Frota' },
-            { to: '/rides', icon: '🏁', label: 'Corridas' },
-            { to: '/hubs', icon: '🅿️', label: 'Hubs' },
-            { to: '/zones', icon: '🗺️', label: 'Zonas' },
+            { to: '/fleet',     icon: '🛴', label: 'Frota' },
+            { to: '/rides',     icon: '🏁', label: 'Corridas' },
+            { to: '/hubs',      icon: '🅿️', label: 'Hubs' },
+            { to: '/zones',     icon: '🗺️', label: 'Zonas' },
+            { to: '/recharges', icon: '💸', label: 'Recargas Pix' },
           ].map(({ to, icon, label }) => (
             <NavLink key={to} to={to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
               <span className="nav-icon">{icon}</span>
@@ -82,11 +84,12 @@ function Layout({ user, onLogout }) {
       <main className="main-content">
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/fleet" element={<Fleet />} />
-          <Route path="/rides" element={<Rides />} />
-          <Route path="/hubs" element={<Hubs />} />
-          <Route path="/zones" element={<Zones />} />
+          <Route path="/dashboard"  element={<Dashboard />} />
+          <Route path="/fleet"      element={<Fleet />} />
+          <Route path="/rides"      element={<Rides />} />
+          <Route path="/hubs"       element={<Hubs />} />
+          <Route path="/zones"      element={<Zones />} />
+          <Route path="/recharges"  element={<Recharges />} />
         </Routes>
       </main>
     </div>

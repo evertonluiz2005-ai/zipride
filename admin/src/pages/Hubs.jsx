@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polygon, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import api from '../api';
 
@@ -74,10 +74,12 @@ export default function Hubs() {
             />
             <MapClickHandler onMapClick={handleMapClick} />
 
-            {zones.map((z) => (
-              <Circle key={z.id} center={[z.center.lat, z.center.lng]} radius={z.radius}
-                pathOptions={{ color: z.color, fillColor: z.color, fillOpacity: 0.07, weight: 2, dashArray: '5 4' }} />
-            ))}
+            {zones.map((z) =>
+              z.coordinates?.length >= 3 ? (
+                <Polygon key={z.id} positions={z.coordinates}
+                  pathOptions={{ color: z.color, fillColor: z.color, fillOpacity: 0.07, weight: 2, dashArray: '5 4' }} />
+              ) : null
+            )}
 
             {hubs.map((h) => (
               <Marker key={h.id} position={[h.lat, h.lng]} icon={hubIcon}>

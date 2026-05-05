@@ -1,4 +1,3 @@
-// src/services/geofence.js
 const prisma = require('../db');
 
 let zonesCache = [];
@@ -26,6 +25,30 @@ async function getHubs() {
 function invalidateZoneCache() { lastZoneCache = 0; }
 function invalidateHubCache()  { lastHubCache  = 0; }
 
+// Ray casting algorithm — coords: [[lat, lng], ...]
+function pointInPolygon(lat, lng, coords) {
+  let inside = false;
+  const n = coords.length;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const [lati, lngi] = coords[i];
+    const [latj, lngj] = coords[j];
+    if (((lati > lat) !== (latj > lat)) &&
+        (lng < (lngj - lngi) * (lat - lati) / (latj - lati) + lngi)) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+async function isInAllowedZone(lat, lng) {
+  const zones = await getZones();
+  return zones.some((z) => {
+    const coords = z.coordinates;
+    if (!Array.isArray(coords) || coords.length < 3) return false;
+    return pointInPolygon(lat, lng, coords);
+  });
+}
+
 function distanceMeters(lat1, lng1, lat2, lng2) {
   const R = 6371000;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -36,11 +59,6 @@ function distanceMeters(lat1, lng1, lat2, lng2) {
     Math.cos((lat2 * Math.PI) / 180) *
     Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-async function isInAllowedZone(lat, lng) {
-  const zones = await getZones();
-  return zones.some((z) => distanceMeters(lat, lng, z.centerLat, z.centerLng) <= z.radius);
 }
 
 async function isNearHub(lat, lng, maxMeters = 150) {

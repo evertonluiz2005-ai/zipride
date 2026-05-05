@@ -57,6 +57,50 @@ router.get('/scooters', adminMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// POST /api/admin/scooters
+router.post('/scooters', adminMiddleware, async (req, res) => {
+  try {
+    const { id, name, model, lat, lng, hubId, deviceId, simNumber } = req.body;
+    if (!id || !name || lat == null || lng == null)
+      return res.status(400).json({ error: 'ID, nome, lat e lng são obrigatórios' });
+
+    const scooter = await prisma.scooter.create({
+      data: {
+        id,
+        name,
+        model:     model || 'Segway Ninebot E2',
+        lat:       parseFloat(lat),
+        lng:       parseFloat(lng),
+        hubId:     hubId || null,
+        deviceId:  deviceId || null,
+        simNumber: simNumber || null,
+        status:    'offline',
+        locked:    true,
+        battery:   100,
+      },
+    });
+
+    const { refreshScooter } = require('../services/gpsSimulator');
+    await refreshScooter(scooter.id);
+    res.status(201).json(scooter);
+  } catch (err) {
+    if (err.code === 'P2002') return res.status(409).json({ error: 'ID já existe' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/scooters/:id
+router.delete('/scooters/:id', adminMiddleware, async (req, res) => {
+  try {
+    const active = await prisma.ride.findFirst({
+      where: { scooterId: req.params.id, status: 'active' },
+    });
+    if (active) return res.status(400).json({ error: 'Patinete com corrida ativa' });
+    await prisma.scooter.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch { res.status(404).json({ error: 'Patinete não encontrado' }); }
+});
+
 // GET /api/admin/rides
 router.get('/rides', adminMiddleware, async (req, res) => {
   try {
@@ -117,13 +161,11 @@ router.delete('/hubs/:id', adminMiddleware, async (req, res) => {
 router.get('/zones', adminMiddleware, async (req, res) => {
   try {
     const zones = await prisma.zone.findMany();
-    // Converte centerLat/centerLng para formato { center: { lat, lng } }
     res.json(zones.map(z => ({
-      id:     z.id,
-      name:   z.name,
-      color:  z.color,
-      radius: z.radius,
-      center: { lat: z.centerLat, lng: z.centerLng },
+      id:          z.id,
+      name:        z.name,
+      color:       z.color,
+      coordinates: z.coordinates,
     })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -131,23 +173,16 @@ router.get('/zones', adminMiddleware, async (req, res) => {
 // POST /api/admin/zones
 router.post('/zones', adminMiddleware, async (req, res) => {
   try {
-    const { name, color, radius, center } = req.body;
-    if (!name || !center?.lat || !center?.lng)
-      return res.status(400).json({ error: 'Nome e coordenadas são obrigatórios' });
+    const { name, color, coordinates } = req.body;
+    if (!name || !Array.isArray(coordinates) || coordinates.length < 3)
+      return res.status(400).json({ error: 'Nome e ao menos 3 pontos são obrigatórios' });
 
     const zone = await prisma.zone.create({
-      data: {
-        name,
-        color:     color || '#3B82F6',
-        radius:    parseInt(radius) || 500,
-        centerLat: parseFloat(center.lat),
-        centerLng: parseFloat(center.lng),
-      },
+      data: { name, color: color || '#3B82F6', coordinates },
     });
     invalidateZoneCache();
     res.status(201).json({
-      id: zone.id, name: zone.name, color: zone.color, radius: zone.radius,
-      center: { lat: zone.centerLat, lng: zone.centerLng },
+      id: zone.id, name: zone.name, color: zone.color, coordinates: zone.coordinates,
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -166,6 +201,59 @@ router.get('/users', adminMiddleware, async (req, res) => {
   try {
     const users = await prisma.user.findMany({ omit: { password: true } });
     res.json(users);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Recargas Pix ─────────────────────────────────────────────────────────────
+
+// GET /api/admin/pix-recharges — lista todas (mais recentes primeiro)
+router.get('/pix-recharges', adminMiddleware, async (req, res) => {
+  try {
+    const recharges = await prisma.pixRecharge.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: {
+        user: { select: { name: true, email: true, cpf: true } },
+      },
+    });
+    res.json(recharges);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/admin/pix-recharges/:id/approve — aprova e credita saldo
+router.post('/pix-recharges/:id/approve', adminMiddleware, async (req, res) => {
+  try {
+    const recharge = await prisma.pixRecharge.findUnique({ where: { id: req.params.id } });
+    if (!recharge)                        return res.status(404).json({ error: 'Recarga não encontrada' });
+    if (recharge.status !== 'pending')    return res.status(400).json({ error: 'Recarga não está pendente' });
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: recharge.userId },
+        data:  { balance: { increment: recharge.amount } },
+      }),
+      prisma.pixRecharge.update({
+        where: { id: req.params.id },
+        data:  { status: 'paid' },
+      }),
+    ]);
+    console.log(`✅ Pix aprovado — R$ ${recharge.amount.toFixed(2)} → usuário ${recharge.userId.slice(0, 8)}`);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/admin/pix-recharges/:id/reject — rejeita
+router.post('/pix-recharges/:id/reject', adminMiddleware, async (req, res) => {
+  try {
+    const recharge = await prisma.pixRecharge.findUnique({ where: { id: req.params.id } });
+    if (!recharge)                     return res.status(404).json({ error: 'Recarga não encontrada' });
+    if (recharge.status !== 'pending') return res.status(400).json({ error: 'Recarga não está pendente' });
+
+    await prisma.pixRecharge.update({
+      where: { id: req.params.id },
+      data:  { status: 'rejected', rejectedReason: req.body.reason || null },
+    });
+    res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

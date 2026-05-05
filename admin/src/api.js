@@ -30,8 +30,15 @@ const api = {
   deleteZone: (id) => request(`/admin/zones/${id}`, { method: 'DELETE' }),
   createHub: (data) => request('/admin/hubs', { method: 'POST', body: data }),
   deleteHub: (id) => request(`/admin/hubs/${id}`, { method: 'DELETE' }),
+  createScooter: (data) => request('/admin/scooters', { method: 'POST', body: data }),
+  deleteScooter: (id) => request(`/admin/scooters/${id}`, { method: 'DELETE' }),
   lockScooter: (id) => request('/scooters/lockScooter', { method: 'POST', body: { scooterId: id } }),
   unlockScooter: (id) => request('/scooters/unlockScooter', { method: 'POST', body: { scooterId: id } }),
   moveScooter: (id, lat, lng) => request(`/scooters/${id}/position`, { method: 'PATCH', body: { lat, lng } }),
+
+  // Recargas Pix
+  getPixRecharges:    ()              => request('/admin/pix-recharges'),
+  approvePixRecharge: (id)            => request(`/admin/pix-recharges/${id}/approve`, { method: 'POST' }),
+  rejectPixRecharge:  (id, reason)    => request(`/admin/pix-recharges/${id}/reject`,  { method: 'POST', body: { reason } }),
 };
 export default api;

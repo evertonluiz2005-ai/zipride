@@ -1,8 +1,10 @@
 const express  = require('express');
 const prisma   = require('../db');
-const { authMiddleware }         = require('../middleware/auth');
+const { authMiddleware }             = require('../middleware/auth');
 const { isInAllowedZone, isNearHub } = require('../services/geofence');
-const { refreshScooter }         = require('../services/gpsSimulator');
+const { refreshScooter }             = require('../services/gpsSimulator');
+const { chargeRide }                 = require('../services/stripe');
+const fcm                            = require('../services/fcm');
 
 const router = express.Router();
 
@@ -20,40 +22,43 @@ router.post('/start', authMiddleware, async (req, res) => {
     const { scooterId } = req.body;
     const userId = req.user.id;
 
-    // Corrida já ativa?
-    const existing = await prisma.ride.findFirst({
-      where: { userId, status: 'active' },
-    });
+    const existing = await prisma.ride.findFirst({ where: { userId, status: 'active' } });
     if (existing) return res.status(400).json({ error: 'Você já tem uma corrida ativa' });
 
+    // Verificar forma de pagamento
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const hasCard    = !!user.stripePaymentMethodId;
+    const hasBalance = user.balance >= UNLOCK_FEE;
+    if (!hasCard && !hasBalance)
+      return res.status(402).json({
+        error: 'Adicione um cartão ou recarregue seu saldo Pix para iniciar uma corrida',
+        code: 'NO_PAYMENT',
+      });
+
     const scooter = await prisma.scooter.findUnique({ where: { id: scooterId } });
-    if (!scooter) return res.status(404).json({ error: 'Patinete não encontrado' });
-    if (scooter.status !== 'available')
-      return res.status(400).json({ error: `Patinete indisponível (status: ${scooter.status})` });
-    if (scooter.battery < 10)
-      return res.status(400).json({ error: 'Bateria insuficiente (< 10%)' });
+    if (!scooter)                       return res.status(404).json({ error: 'Patinete não encontrado' });
+    if (scooter.status !== 'available') return res.status(400).json({ error: `Patinete indisponível (${scooter.status})` });
+    if (scooter.battery < 10)           return res.status(400).json({ error: 'Bateria insuficiente (< 10%)' });
     if (!(await isInAllowedZone(scooter.lat, scooter.lng)))
       return res.status(400).json({ error: 'Patinete fora da zona permitida' });
 
-    // Criar corrida
     const ride = await prisma.ride.create({
-      data: {
-        userId,
-        scooterId,
-        startLat: scooter.lat,
-        startLng: scooter.lng,
-        status: 'active',
-        unlockFee: UNLOCK_FEE,
-        pricePerMin: PRICE_PER_MIN,
-      },
+      data: { userId, scooterId, startLat: scooter.lat, startLng: scooter.lng,
+              status: 'active', unlockFee: UNLOCK_FEE, pricePerMin: PRICE_PER_MIN },
     });
 
-    // Atualizar patinete
     const updatedScooter = await prisma.scooter.update({
       where: { id: scooterId },
-      data: { status: 'in_use', locked: false, currentRideId: ride.id },
+      data:  { status: 'in_use', locked: false, currentRideId: ride.id },
     });
     await refreshScooter(scooterId);
+
+    // Push notification — fire and forget (reutiliza `user` já carregado)
+    fcm.send(user?.fcmToken, {
+      title: '🛴 Corrida iniciada!',
+      body:  `${scooter.name} desbloqueado. Boa viagem!`,
+      data:  { rideId: ride.id, type: 'ride_start' },
+    });
 
     res.status(201).json({ ride, scooter: updatedScooter });
   } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
@@ -63,9 +68,9 @@ router.post('/start', authMiddleware, async (req, res) => {
 router.post('/:id/end', authMiddleware, async (req, res) => {
   try {
     const ride = await prisma.ride.findUnique({ where: { id: req.params.id } });
-    if (!ride) return res.status(404).json({ error: 'Corrida não encontrada' });
-    if (ride.userId !== req.user.id) return res.status(403).json({ error: 'Não autorizado' });
-    if (ride.status !== 'active') return res.status(400).json({ error: 'Corrida não está ativa' });
+    if (!ride)                        return res.status(404).json({ error: 'Corrida não encontrada' });
+    if (ride.userId !== req.user.id)  return res.status(403).json({ error: 'Não autorizado' });
+    if (ride.status !== 'active')     return res.status(400).json({ error: 'Corrida não está ativa' });
 
     const scooter = await prisma.scooter.findUnique({ where: { id: ride.scooterId } });
 
@@ -76,40 +81,56 @@ router.post('/:id/end', authMiddleware, async (req, res) => {
     const endTime = new Date();
     const cost    = calcCost(ride.startTime, endTime);
 
-    // Finalizar corrida
     const updatedRide = await prisma.ride.update({
       where: { id: ride.id },
       data: {
-        endTime,
-        endLat:    scooter.lat,
-        endLng:    scooter.lng,
-        cost,
-        status:    'completed',
+        endTime, cost, status: 'completed',
+        endLat: scooter.lat, endLng: scooter.lng,
         nearestHub: nearHub?.name || null,
       },
     });
 
-    // Liberar patinete
     const updatedScooter = await prisma.scooter.update({
       where: { id: scooter.id },
       data: {
-        status:       'available',
-        locked:       true,
-        currentRideId: null,
-        hubId:        nearHub?.id || scooter.hubId,
-        totalRides:   { increment: 1 },
+        status: 'available', locked: true, currentRideId: null,
+        hubId: nearHub?.id || scooter.hubId, totalRides: { increment: 1 },
       },
     });
-
-    // Incrementar totalRides do usuário
-    await prisma.user.update({
-      where: { id: req.user.id },
-      data: { totalRides: { increment: 1 } },
-    });
-
+    await prisma.user.update({ where: { id: req.user.id }, data: { totalRides: { increment: 1 } } });
     await refreshScooter(scooter.id);
 
-    res.json({ ride: updatedRide, scooter: updatedScooter });
+    const paymentResult = await chargeRide(req.user, updatedRide);
+
+    // Push notification — fire and forget
+    const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { fcmToken: true } });
+    const costFormatted = `R$ ${cost.toFixed(2).replace('.', ',')}`;
+
+    if (paymentResult.status === 'paid') {
+      fcm.send(user?.fcmToken, {
+        title: '✅ Corrida finalizada',
+        body:  `Total cobrado: ${costFormatted}. Obrigado!`,
+        data:  { rideId: ride.id, type: 'ride_end', cost: String(cost) },
+      });
+    } else if (paymentResult.status === 'failed') {
+      fcm.send(user?.fcmToken, {
+        title: '⚠️ Falha no pagamento',
+        body:  `Não conseguimos cobrar ${costFormatted}. Toque para resolver.`,
+        data:  { rideId: ride.id, type: 'payment_failed', cost: String(cost) },
+      });
+    } else {
+      fcm.send(user?.fcmToken, {
+        title: '✅ Corrida finalizada',
+        body:  `Duração: ${Math.round((endTime - new Date(ride.startTime)) / 60000)} min — ${costFormatted}`,
+        data:  { rideId: ride.id, type: 'ride_end', cost: String(cost) },
+      });
+    }
+
+    res.json({
+      ride: { ...updatedRide, paymentStatus: paymentResult.status },
+      scooter: updatedScooter,
+      payment: paymentResult,
+    });
   } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
@@ -117,26 +138,18 @@ router.post('/:id/end', authMiddleware, async (req, res) => {
 router.get('/my', authMiddleware, async (req, res) => {
   try {
     const rides = await prisma.ride.findMany({
-      where: { userId: req.user.id },
+      where:   { userId: req.user.id },
       orderBy: { startTime: 'desc' },
       include: { scooter: { select: { name: true } } },
     });
-    // Normaliza para o formato esperado pelo frontend
-    const normalized = rides.map((r) => ({
-      ...r,
-      scooterName: r.scooter?.name,
-      userName: req.user.name,
-    }));
-    res.json(normalized);
+    res.json(rides.map((r) => ({ ...r, scooterName: r.scooter?.name, userName: req.user.name })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // GET /api/rides/active
 router.get('/active', authMiddleware, async (req, res) => {
   try {
-    const ride = await prisma.ride.findFirst({
-      where: { userId: req.user.id, status: 'active' },
-    });
+    const ride = await prisma.ride.findFirst({ where: { userId: req.user.id, status: 'active' } });
     if (!ride) return res.json(null);
     const scooter = await prisma.scooter.findUnique({ where: { id: ride.scooterId } });
     res.json({ ride, scooter });

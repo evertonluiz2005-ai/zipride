@@ -273,3 +273,5 @@ curl -s -X POST http://localhost:4000/api/rides/$RIDE_ID/end \
 ---
 
 *ZipRide MVP — Desenvolvido para validação de operação de micromobilidade em Campo Mourão, PR.*
+
+Falta ainda: deploy

@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router-dom';
 export default function BottomNav({ active }) {
   const navigate = useNavigate();
   const items = [
-    { key: 'map', icon: '🗺️', label: 'Mapa', path: '/map' },
-    { key: 'ride', icon: '🛴', label: 'Corrida', path: '/ride' },
+    { key: 'explore', icon: '🛴', label: 'Explorar',  path: '/map' },
+    { key: 'payment', icon: '💳', label: 'Pagamento', path: '/payment' },
     { key: 'history', icon: '📋', label: 'Histórico', path: '/history' },
   ];
-
   return (
     <nav className="bottom-nav">
       {items.map((item) => (

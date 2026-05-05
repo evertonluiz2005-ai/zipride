@@ -18,15 +18,16 @@ async function main() {
   await prisma.user.deleteMany();
   console.log('🗑️  Dados anteriores removidos');
 
-  // ─── Zonas (Campo Mourão, PR) ─────────────────────────────────────────────
+  // ─── Zonas (Campo Mourão, PR) — polígonos ─────────────────────────────────
   const zoneCentro = await prisma.zone.create({
     data: {
       id: 'zone-centro',
       name: 'Centro',
       color: '#3B82F6',
-      radius: 600,
-      centerLat: -24.0449,
-      centerLng: -52.3831,
+      coordinates: [
+        [-24.0390, -52.3890], [-24.0390, -52.3770],
+        [-24.0510, -52.3770], [-24.0510, -52.3890],
+      ],
     },
   });
 
@@ -35,9 +36,10 @@ async function main() {
       id: 'zone-unicentro',
       name: 'Universidade (UNICENTRO)',
       color: '#10B981',
-      radius: 500,
-      centerLat: -24.0549,
-      centerLng: -52.3731,
+      coordinates: [
+        [-24.0490, -52.3790], [-24.0490, -52.3670],
+        [-24.0610, -52.3670], [-24.0610, -52.3790],
+      ],
     },
   });
 
@@ -46,9 +48,10 @@ async function main() {
       id: 'zone-shopping',
       name: 'Shopping Avenida',
       color: '#F59E0B',
-      radius: 400,
-      centerLat: -24.0349,
-      centerLng: -52.3931,
+      coordinates: [
+        [-24.0290, -52.3990], [-24.0290, -52.3870],
+        [-24.0410, -52.3870], [-24.0410, -52.3990],
+      ],
     },
   });
 
@@ -186,6 +189,8 @@ async function main() {
       password: await bcrypt.hash('admin123', 10),
       role: 'admin',
       balance: 100.0,
+      cpf: '00000000191',
+      documentStatus: 'approved',
     },
   });
 
@@ -198,6 +203,8 @@ async function main() {
       role: 'user',
       balance: 50.0,
       totalRides: 3,
+      cpf: '52998224725',
+      documentStatus: 'approved',
     },
   });
 
