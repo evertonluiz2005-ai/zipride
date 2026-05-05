@@ -6,6 +6,7 @@ import Rides      from './pages/Rides';
 import Hubs       from './pages/Hubs';
 import Zones      from './pages/Zones';
 import Recharges  from './pages/Recharges';
+import Documents  from './pages/Documents';
 import api from './api';
 import './App.css';
 
@@ -62,7 +63,8 @@ function Layout({ user, onLogout }) {
             { to: '/rides',     icon: '🏁', label: 'Corridas' },
             { to: '/hubs',      icon: '🅿️', label: 'Hubs' },
             { to: '/zones',     icon: '🗺️', label: 'Zonas' },
-            { to: '/recharges', icon: '💸', label: 'Recargas Pix' },
+            { to: '/recharges',  icon: '💸', label: 'Recargas Pix' },
+            { to: '/documents',  icon: '🪪', label: 'Documentos' },
           ].map(({ to, icon, label }) => (
             <NavLink key={to} to={to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
               <span className="nav-icon">{icon}</span>
@@ -90,6 +92,7 @@ function Layout({ user, onLogout }) {
           <Route path="/hubs"       element={<Hubs />} />
           <Route path="/zones"      element={<Zones />} />
           <Route path="/recharges"  element={<Recharges />} />
+          <Route path="/documents"  element={<Documents />} />
         </Routes>
       </main>
     </div>

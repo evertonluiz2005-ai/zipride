@@ -142,10 +142,10 @@ export default function Login() {
           {loading ? 'Entrando...' : 'Entrar'}
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#888', fontSize: 13, margin: '4px 0' }}>
-          <div style={{ flex: 1, height: 1, background: '#333' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9CA3AF', fontSize: 13, margin: '4px 0' }}>
+          <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
           <span>ou continue com</span>
-          <div style={{ flex: 1, height: 1, background: '#333' }} />
+          <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
         </div>
 
         <div style={{ display: 'flex', gap: 10 }}>

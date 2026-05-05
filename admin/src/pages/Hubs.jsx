@@ -69,7 +69,7 @@ export default function Hubs() {
         <div className="hub-map" style={{ cursor: placing ? 'crosshair' : 'default' }}>
           <MapContainer center={[-24.0449, -52.3831]} zoom={15} style={{ height: '100%' }}>
             <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
               attribution='&copy; CARTO'
             />
             <MapClickHandler onMapClick={handleMapClick} />

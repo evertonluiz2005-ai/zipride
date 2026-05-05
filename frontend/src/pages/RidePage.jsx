@@ -16,13 +16,13 @@ function TrackScooter({ pos }) {
 
 const hubIcon = L.divIcon({
   className: '',
-  html: `<div style="background:#6366F1;border:2px solid white;border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.4);">🅿️</div>`,
+  html: `<div style="background:#fff;border:2px solid #E5E7EB;border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.12);">🅿️</div>`,
   iconSize: [28, 28], iconAnchor: [14, 14],
 });
 
 const riderIcon = L.divIcon({
   className: '',
-  html: `<div style="background:#6366F1;border:3px solid white;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(99,102,241,0.6);font-size:20px;animation:pulse 2s infinite;">🛴</div>`,
+  html: `<div style="background:#FF5200;border:3px solid white;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(255,82,0,0.5);font-size:20px;animation:pulse 2s infinite;">🛴</div>`,
   iconSize: [40, 40], iconAnchor: [20, 20],
 });
 
@@ -62,7 +62,7 @@ function RideSummaryModal({ ride, payment, onClose }) {
           </div>
           <div className="stat-divider" />
           <div className="stat-item">
-            <span className="stat-value mono" style={{ color: '#6EE7B7' }}>
+            <span className="stat-value mono">
               R$ {ride.cost?.toFixed(2)}
             </span>
             <span className="stat-label">Total</span>
@@ -201,7 +201,7 @@ export default function RidePage() {
         {scooterPos ? (
           <MapContainer key="ride-page" center={scooterPos} zoom={17} style={{ height: '100%' }} zoomControl={false}>
             <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
               attribution="&copy; CARTO"
             />
             <TrackScooter pos={scooterPos} />
@@ -247,7 +247,7 @@ export default function RidePage() {
 
         <div className="pricing-hint">
           R$ {pricing.unlockFee.toFixed(2)} desbloqueio + R$ {pricing.pricePerMin.toFixed(2)}/min
-          · <span style={{ color: '#6EE7B7' }}>cobrado no cartão</span>
+          · <span style={{ color: 'var(--accent)' }}>cobrado no cartão</span>
         </div>
 
         <button className="btn-danger" onClick={handleEndRide} disabled={ending}>

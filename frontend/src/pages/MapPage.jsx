@@ -20,7 +20,7 @@ const scooterIcon = (battery) => {
 
 const hubIcon = L.divIcon({
   className: '',
-  html: `<div style="background:#6366F1;border:2px solid white;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);font-size:16px;">🅿️</div>`,
+  html: `<div style="background:#fff;border:2px solid #E5E7EB;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.12);font-size:16px;">🅿️</div>`,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
@@ -70,7 +70,8 @@ export default function MapPage() {
     );
 
     // Socket.io
-    const socket = io('http://localhost:4000');
+    const SOCKET_URL = (process.env.REACT_APP_API_URL || 'http://localhost:4000/api').replace('/api', '');
+    const socket = io(SOCKET_URL);
     socketRef.current = socket;
     socket.on('scooters_update', (data) => {
       setScooters(data.filter((s) => s.status === 'available' && s.battery >= 10));
@@ -129,7 +130,7 @@ export default function MapPage() {
           zoomControl={false}
         >
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
           />
           {userPos && <FlyToUser pos={userPos} />}

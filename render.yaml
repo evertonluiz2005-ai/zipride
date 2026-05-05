@@ -1,0 +1,100 @@
+services:
+
+  # ─── Backend Node.js ──────────────────────────────────────────────────────────
+  - type: web
+    name: zipride-backend
+    rootDir: backend
+    env: node
+    plan: free
+    buildCommand: npm install && npx prisma generate && npx prisma db push
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: zipride-uploads
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: zipride-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: UPLOADS_DIR
+        value: /var/data/uploads
+
+      # URLs dos apps — Render usa o nome do serviço como subdomínio
+      - key: FRONTEND_URL
+        value: https://zipride-frontend.onrender.com
+      - key: ADMIN_URL
+        value: https://zipride-admin.onrender.com
+
+      # Pix
+      - key: PIX_KEY
+        value: "52299516000182"
+
+      # Stripe — preencher no painel do Render após o primeiro deploy
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+      # Firebase (push notifications) — preencher no painel do Render
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+
+      # OAuth — preencher no painel do Render
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: FACEBOOK_APP_ID
+        sync: false
+      - key: FACEBOOK_APP_SECRET
+        sync: false
+
+  # ─── Frontend (app usuário) ───────────────────────────────────────────────────
+  - type: static
+    name: zipride-frontend
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: build
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://zipride-backend.onrender.com/api
+      # OAuth — preencher no painel do Render
+      - key: REACT_APP_GOOGLE_CLIENT_ID
+        sync: false
+      - key: REACT_APP_FACEBOOK_APP_ID
+        sync: false
+
+  # ─── Admin ────────────────────────────────────────────────────────────────────
+  - type: static
+    name: zipride-admin
+    rootDir: admin
+    buildCommand: npm install && npm run build
+    staticPublishPath: build
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://zipride-backend.onrender.com/api
+
+# ─── Banco de dados PostgreSQL ────────────────────────────────────────────────
+databases:
+  - name: zipride-db
+    databaseName: zipride
+    user: zipride
+    plan: free

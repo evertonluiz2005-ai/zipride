@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import api from '../api';
+import api, { UPLOADS_BASE } from '../api';
 import { useAuth } from '../context/AuthContext';
 import BottomNav from '../components/BottomNav';
 
@@ -20,10 +20,10 @@ function formatDuration(start, end) {
 // Badge de status de pagamento
 function PaymentBadge({ status, rideId, onRetry }) {
   const map = {
-    paid:    { label: '✅ Pago',     style: { background: 'rgba(16,185,129,0.15)', color: '#10B981' } },
-    pending: { label: '⏳ Pendente', style: { background: 'rgba(245,158,11,0.15)',  color: '#F59E0B' } },
-    failed:  { label: '❌ Falhou',   style: { background: 'rgba(239,68,68,0.15)',   color: '#EF4444' } },
-    free:    { label: '🎁 Grátis',   style: { background: 'rgba(99,102,241,0.15)',  color: '#818CF8' } },
+    paid:    { label: '✅ Pago',     style: { background: 'rgba(22,163,74,0.1)',   color: '#16A34A' } },
+    pending: { label: '⏳ Pendente', style: { background: 'rgba(217,119,6,0.1)',   color: '#D97706' } },
+    failed:  { label: '❌ Falhou',   style: { background: 'rgba(220,38,38,0.1)',   color: '#DC2626' } },
+    free:    { label: '🎁 Grátis',   style: { background: 'rgba(255,82,0,0.08)',   color: '#FF5200' } },
   };
   const info = map[status];
   if (!info) return null;
@@ -35,8 +35,8 @@ function PaymentBadge({ status, rideId, onRetry }) {
         <button
           onClick={() => onRetry(rideId)}
           style={{
-            background: 'none', border: '1px solid rgba(99,102,241,0.4)',
-            borderRadius: 6, color: '#818CF8', fontSize: 11,
+            background: 'none', border: '1px solid rgba(255,82,0,0.4)',
+            borderRadius: 6, color: '#FF5200', fontSize: 11,
             padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit',
           }}
         >
@@ -48,10 +48,12 @@ function PaymentBadge({ status, rideId, onRetry }) {
 }
 
 export default function HistoryPage() {
-  const [rides,    setRides]    = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [toast,    setToast]    = useState('');
-  const { user, logout }        = useAuth();
+  const [rides,      setRides]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [toast,      setToast]      = useState('');
+  const [uploading,  setUploading]  = useState(false);
+  const fileRef = useRef(null);
+  const { user, logout, refreshUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const justCompleted = location.state?.justCompleted;
@@ -61,6 +63,22 @@ export default function HistoryPage() {
   useEffect(() => {
     api.getMyRides().then(setRides).finally(() => setLoading(false));
   }, []);
+
+  async function handleDocUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      await api.uploadDocument(file);
+      await refreshUser();
+      showToast('Documento enviado! Aguardando análise.');
+    } catch (err) {
+      showToast(`❌ ${err.message}`);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }
 
   async function handleRetry(rideId) {
     try {
@@ -126,6 +144,63 @@ export default function HistoryPage() {
         <span>💳</span>
         <span>Gerenciar cartão de pagamento</span>
         <span style={{ marginLeft: 'auto', opacity: 0.5 }}>›</span>
+      </div>
+
+      {/* Verificação de identidade */}
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <span style={{ fontSize: 14, fontWeight: 700 }}>Verificação de identidade</span>
+          {user?.documentStatus === 'approved' && (
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#16A34A', background: 'rgba(22,163,74,0.1)', padding: '2px 8px', borderRadius: 20 }}>✓ Aprovado</span>
+          )}
+          {user?.documentStatus === 'pending' && user?.documentImageUrl && (
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#D97706', background: 'rgba(217,119,6,0.1)', padding: '2px 8px', borderRadius: 20 }}>⏳ Em análise</span>
+          )}
+          {user?.documentStatus === 'rejected' && (
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#DC2626', background: 'rgba(220,38,38,0.08)', padding: '2px 8px', borderRadius: 20 }}>✗ Rejeitado</span>
+          )}
+          {user?.documentStatus === 'pending' && !user?.documentImageUrl && (
+            <span style={{ fontSize: 12, color: 'var(--muted)' }}>Pendente</span>
+          )}
+        </div>
+
+        {user?.documentStatus === 'approved' ? (
+          <p style={{ fontSize: 12, color: 'var(--muted)' }}>Sua identidade foi verificada com sucesso.</p>
+        ) : user?.documentStatus === 'pending' && user?.documentImageUrl ? (
+          <p style={{ fontSize: 12, color: 'var(--muted)' }}>Documento recebido. A equipe ZipRide irá analisar em breve.</p>
+        ) : (
+          <>
+            {user?.documentStatus === 'rejected' && user?.documentRejectedReason && (
+              <p style={{ fontSize: 12, color: '#DC2626', marginBottom: 8 }}>
+                Motivo: {user.documentRejectedReason}
+              </p>
+            )}
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>
+              Envie uma foto do seu RG ou CNH para ativar sua conta.
+            </p>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleDocUpload}
+              style={{ display: 'none' }}
+            />
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              style={{
+                width: '100%', padding: '10px', borderRadius: 10,
+                border: '1.5px dashed var(--border)', background: 'var(--surface)',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                color: uploading ? 'var(--muted)' : 'var(--accent)',
+                fontFamily: 'inherit',
+              }}
+            >
+              {uploading ? 'Enviando...' : '📷 Tirar foto ou escolher da galeria'}
+            </button>
+          </>
+        )}
       </div>
 
       <div className="section-title">Histórico de corridas</div>

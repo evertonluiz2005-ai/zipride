@@ -50,7 +50,8 @@ export default function Fleet() {
 
   useEffect(() => {
     load();
-    const socket = io('http://localhost:4000');
+    const SOCKET_URL = (process.env.REACT_APP_API_URL || 'http://localhost:4000/api').replace('/api', '');
+    const socket = io(SOCKET_URL);
     socketRef.current = socket;
     socket.on('scooters_update', setScooters);
     return () => socket.disconnect();
@@ -230,7 +231,7 @@ export default function Fleet() {
       <div className="fleet-map">
         <MapContainer center={CAMPO_MOURAO} zoom={15} style={{ height: '100%' }} zoomControl>
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; CARTO'
           />
           <MapClickPicker

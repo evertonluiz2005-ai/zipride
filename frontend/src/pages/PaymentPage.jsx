@@ -8,13 +8,13 @@ import BottomNav from '../components/BottomNav';
 const CARD_STYLE = {
   style: {
     base: {
-      color: '#F1F5F9',
-      fontFamily: '"Space Grotesk", system-ui, sans-serif',
+      color: '#111827',
+      fontFamily: '"Inter", system-ui, sans-serif',
       fontSize: '16px',
       fontSmoothing: 'antialiased',
-      '::placeholder': { color: '#475569' },
+      '::placeholder': { color: '#9CA3AF' },
     },
-    invalid: { color: '#EF4444', iconColor: '#EF4444' },
+    invalid: { color: '#DC2626', iconColor: '#DC2626' },
   },
 };
 
@@ -117,7 +117,7 @@ function PixModal({ pixData, onClose, onPaid, refreshUser }) {
         {status === 'paid' && (
           <div style={{ textAlign: 'center', padding: '32px 0' }}>
             <div style={{ fontSize: 56 }}>✅</div>
-            <h3 style={{ color: '#6EE7B7', margin: '12px 0 6px' }}>Pagamento confirmado!</h3>
+            <h3 style={{ color: '#16A34A', margin: '12px 0 6px' }}>Pagamento confirmado!</h3>
             <p style={{ color: '#aaa', fontSize: 14 }}>
               R$ {pixData.amount.toFixed(2)} adicionados ao seu saldo
             </p>
@@ -403,7 +403,7 @@ export default function PaymentPage() {
               <span className="badge-green">✓ Ativo</span>
             </div>
             <div className="saved-card-body">
-              <span style={{ fontSize: 12, fontWeight: 700, background: '#334155', padding: '2px 6px', borderRadius: 4, textTransform: 'uppercase' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, background: '#F3F4F6', color: '#374151', padding: '2px 6px', borderRadius: 4, textTransform: 'uppercase' }}>
                 {card.brand || 'card'}
               </span>
               <span className="card-number">•••• •••• •••• {card.last4}</span>
@@ -458,112 +458,115 @@ export default function PaymentPage() {
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 const s = {
   balanceCard: {
-    background: 'linear-gradient(135deg, #1c1c3a 0%, #0f2027 100%)',
-    border: '1px solid rgba(110,231,183,0.25)',
+    background: '#FFF7F4',
+    border: '1.5px solid rgba(255,82,0,0.2)',
     borderRadius: 16, padding: '16px 18px',
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     marginBottom: 14,
   },
   balanceLeft:  { display: 'flex', flexDirection: 'column', gap: 2 },
-  balanceLabel: { fontSize: 11, color: '#6EE7B7', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
-  balanceValue: { fontSize: 28, fontWeight: 700, color: '#fff', lineHeight: 1.2 },
-  balanceHint:  { fontSize: 11, color: '#64748B', marginTop: 2 },
+  balanceLabel: { fontSize: 11, color: '#FF5200', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
+  balanceValue: { fontSize: 28, fontWeight: 700, color: '#111827', lineHeight: 1.2 },
+  balanceHint:  { fontSize: 11, color: '#6B7280', marginTop: 2 },
   btnPix: {
-    background: 'linear-gradient(135deg, #6EE7B7, #6366F1)',
+    background: '#FF5200',
     color: '#fff', border: 'none', borderRadius: 10,
     padding: '10px 18px', fontWeight: 700, fontSize: 14, cursor: 'pointer',
     whiteSpace: 'nowrap',
   },
   pixSelector: {
-    background: '#1c1c2e', border: '1px solid rgba(255,255,255,0.08)',
+    background: '#F9FAFB', border: '1px solid #E5E7EB',
     borderRadius: 16, padding: '16px', marginBottom: 14,
   },
   pixSelectorTitle: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    fontWeight: 600, fontSize: 15, marginBottom: 14,
+    fontWeight: 600, fontSize: 15, marginBottom: 14, color: '#111827',
   },
-  btnX: { background: 'none', border: 'none', color: '#64748B', fontSize: 18, cursor: 'pointer', padding: 0 },
+  btnX: { background: 'none', border: 'none', color: '#6B7280', fontSize: 18, cursor: 'pointer', padding: 0 },
   amountGrid: { display: 'flex', gap: 8, marginBottom: 12 },
   amountBtn: {
     flex: 1, padding: '10px 0', borderRadius: 10,
-    border: '1px solid rgba(255,255,255,0.12)',
-    background: 'rgba(255,255,255,0.04)', color: '#F1F5F9',
+    border: '1.5px solid #E5E7EB',
+    background: '#fff', color: '#111827',
     fontSize: 15, fontWeight: 600, cursor: 'pointer',
   },
   amountBtnActive: {
-    border: '1px solid #6EE7B7', background: 'rgba(110,231,183,0.12)', color: '#6EE7B7',
+    border: '1.5px solid #FF5200', background: 'rgba(255,82,0,0.06)', color: '#FF5200',
   },
   customRow: {
     display: 'flex', alignItems: 'center',
-    border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, overflow: 'hidden',
-    background: 'rgba(255,255,255,0.04)', marginBottom: 12,
+    border: '1.5px solid #E5E7EB', borderRadius: 10, overflow: 'hidden',
+    background: '#fff', marginBottom: 12,
   },
-  customPrefix: { padding: '0 12px', color: '#64748B', fontSize: 15 },
+  customPrefix: { padding: '0 12px', color: '#6B7280', fontSize: 15 },
   customInput: {
     flex: 1, background: 'transparent', border: 'none', outline: 'none',
-    color: '#F1F5F9', fontSize: 15, padding: '11px 0',
+    color: '#111827', fontSize: 15, padding: '11px 0',
   },
-  pixInfo: { display: 'flex', gap: 10, fontSize: 11, color: '#64748B', marginBottom: 14, flexWrap: 'wrap' },
+  pixInfo: { display: 'flex', gap: 10, fontSize: 11, color: '#6B7280', marginBottom: 14, flexWrap: 'wrap' },
   btnPixConfirm: {
     width: '100%', padding: '13px 0', borderRadius: 10, border: 'none',
-    background: 'linear-gradient(135deg, #6EE7B7, #6366F1)',
+    background: '#FF5200',
     color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer',
   },
 };
 
 const pix = {
   overlay: {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)',
+    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
     display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1000,
   },
   modal: {
-    background: '#131320', borderRadius: '20px 20px 0 0',
+    background: '#fff', borderRadius: '20px 20px 0 0',
     padding: '24px 20px 36px', width: '100%', maxWidth: 480,
     maxHeight: '92vh', overflowY: 'auto',
+    boxShadow: '0 -4px 40px rgba(0,0,0,0.1)',
   },
   header: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16,
   },
-  headerLabel:  { fontSize: 12, color: '#64748B', marginBottom: 2 },
-  headerAmount: { fontSize: 28, fontWeight: 700, color: '#6EE7B7' },
-  refLabel:     { fontSize: 11, color: '#64748B', textAlign: 'right', marginBottom: 2 },
-  refCode:      { fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'monospace', letterSpacing: 1 },
+  headerLabel:  { fontSize: 12, color: '#6B7280', marginBottom: 2 },
+  headerAmount: { fontSize: 28, fontWeight: 700, color: '#FF5200' },
+  refLabel:     { fontSize: 11, color: '#6B7280', textAlign: 'right', marginBottom: 2 },
+  refCode:      { fontSize: 14, fontWeight: 700, color: '#111827', fontFamily: 'monospace', letterSpacing: 1 },
   instrucoes: {
-    background: 'rgba(110,231,183,0.07)', border: '1px solid rgba(110,231,183,0.15)',
+    background: 'rgba(255,82,0,0.05)', border: '1px solid rgba(255,82,0,0.15)',
     borderRadius: 12, padding: '12px 14px', marginBottom: 14,
   },
   keyBox: {
-    background: '#0a0a0f', borderRadius: 12, padding: '12px 14px', marginBottom: 10,
+    background: '#F9FAFB', border: '1px solid #E5E7EB',
+    borderRadius: 12, padding: '12px 14px', marginBottom: 10,
   },
   refBox: {
-    background: '#0a0a0f', borderRadius: 12, padding: '12px 14px', marginBottom: 14,
+    background: '#F9FAFB', border: '1px solid #E5E7EB',
+    borderRadius: 12, padding: '12px 14px', marginBottom: 14,
   },
   keyMeta: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 },
   keyTypeBadge: {
     background: '#1d4ed8', color: '#fff', fontSize: 10, fontWeight: 700,
     padding: '2px 7px', borderRadius: 4, letterSpacing: 0.5,
   },
-  keyBeneficiary: { fontSize: 12, color: '#94A3B8' },
+  keyBeneficiary: { fontSize: 12, color: '#6B7280' },
   keyRow: { display: 'flex', alignItems: 'center', gap: 10 },
-  keyText: { flex: 1, fontSize: 14, color: '#F1F5F9', wordBreak: 'break-all' },
+  keyText: { flex: 1, fontSize: 14, color: '#111827', wordBreak: 'break-all' },
   btnCopyInline: {
-    flexShrink: 0, padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.5)',
-    background: 'rgba(99,102,241,0.15)', color: '#818CF8', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+    flexShrink: 0, padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(255,82,0,0.4)',
+    background: 'rgba(255,82,0,0.08)', color: '#FF5200', fontSize: 13, fontWeight: 600, cursor: 'pointer',
   },
   btnCopied: {
     flexShrink: 0, padding: '6px 14px', borderRadius: 8, border: 'none',
-    background: '#059669', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+    background: '#16A34A', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
   },
   polling: {
     display: 'flex', alignItems: 'center', gap: 8,
-    color: '#64748B', fontSize: 13, marginBottom: 6, justifyContent: 'center',
+    color: '#6B7280', fontSize: 13, marginBottom: 6, justifyContent: 'center',
   },
   dot: {
-    width: 8, height: 8, borderRadius: '50%', background: '#6EE7B7', display: 'inline-block',
+    width: 8, height: 8, borderRadius: '50%', background: '#FF5200', display: 'inline-block',
   },
   btnClose: {
     width: '100%', padding: '12px 0', borderRadius: 10,
-    border: '1px solid rgba(255,255,255,0.12)',
-    background: 'transparent', color: '#94A3B8', fontSize: 14, cursor: 'pointer',
+    border: '1px solid #E5E7EB',
+    background: 'transparent', color: '#6B7280', fontSize: 14, cursor: 'pointer',
   },
 };

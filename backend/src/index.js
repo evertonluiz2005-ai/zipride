@@ -32,6 +32,11 @@ const io = new Server(server, {
 // ─── Webhook do Stripe ANTES do express.json() (precisa de raw body) ─────────
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 
+// ─── Diretório de uploads (não servido publicamente) ─────────────────────────
+const fs = require('fs');
+const { UPLOADS_DIR } = require('./config');
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
 // ─── Middlewares gerais ───────────────────────────────────────────────────────
 app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json());

@@ -40,5 +40,10 @@ const api = {
   getPixRecharges:    ()              => request('/admin/pix-recharges'),
   approvePixRecharge: (id)            => request(`/admin/pix-recharges/${id}/approve`, { method: 'POST' }),
   rejectPixRecharge:  (id, reason)    => request(`/admin/pix-recharges/${id}/reject`,  { method: 'POST', body: { reason } }),
+
+  // Documentos de identidade
+  getDocuments:    ()              => request('/admin/documents'),
+  approveDocument: (userId)        => request(`/admin/documents/${userId}/approve`, { method: 'POST' }),
+  rejectDocument:  (userId, reason) => request(`/admin/documents/${userId}/reject`,  { method: 'POST', body: { reason } }),
 };
 export default api;

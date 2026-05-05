@@ -1,9 +1,34 @@
 const express = require('express');
 const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
+const path    = require('path');
+const fs      = require('fs');
+const multer  = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const prisma  = require('../db');
 const { authMiddleware, JWT_SECRET } = require('../middleware/auth');
+
+// ─── Multer — upload de documento ─────────────────────────────────────────────
+const { UPLOADS_DIR } = require('../config');
+const DOC_DIR = path.join(UPLOADS_DIR, 'documents');
+fs.mkdirSync(DOC_DIR, { recursive: true });
+
+const docStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, DOC_DIR),
+  filename:    (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `${req.user.id}-${Date.now()}${ext}`);
+  },
+});
+
+const uploadDoc = multer({
+  storage: docStorage,
+  limits:  { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Apenas imagens são permitidas'));
+  },
+});
 
 const router = express.Router();
 
@@ -257,6 +282,46 @@ router.post('/logout', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Erro interno' });
   }
+});
+
+// ─── Upload de documento de identidade ───────────────────────────────────────
+router.post('/upload-document', authMiddleware, (req, res, next) => {
+  uploadDoc.single('document')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    next();
+  });
+}, async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+
+    const imageUrl = `/uploads/documents/${req.file.filename}`;
+
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data:  {
+        documentImageUrl:       imageUrl,
+        documentStatus:         'pending',
+        documentRejectedReason: null,
+      },
+    });
+
+    res.json({ documentImageUrl: imageUrl, documentStatus: user.documentStatus });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+// ─── Imagem do documento (somente o próprio usuário) ─────────────────────────
+router.get('/document-image', authMiddleware, (req, res) => {
+  const { documentImageUrl } = req.user;
+  if (!documentImageUrl) return res.status(404).json({ error: 'Nenhum documento enviado' });
+
+  const filename = path.basename(documentImageUrl);
+  const filepath = path.join(DOC_DIR, filename);
+  if (!fs.existsSync(filepath)) return res.status(404).json({ error: 'Arquivo não encontrado' });
+
+  res.sendFile(filepath);
 });
 
 // ─── FCM token ────────────────────────────────────────────────────────────────

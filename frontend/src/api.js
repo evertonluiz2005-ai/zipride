@@ -1,4 +1,5 @@
-const BASE = process.env.REACT_APP_API_URL || 'http://localhost:4000/api';
+const BASE         = process.env.REACT_APP_API_URL || 'http://localhost:4000/api';
+export const UPLOADS_BASE = BASE.replace('/api', '');
 
 function getToken()        { return localStorage.getItem('scooter_token'); }
 function getRefreshToken() { return localStorage.getItem('scooter_refresh_token'); }
@@ -64,6 +65,20 @@ const api = {
   refresh:  (refreshToken) => request('/auth/refresh', { method: 'POST', body: { refreshToken } }, false),
   logout:   (refreshToken) => request('/auth/logout',  { method: 'POST', body: { refreshToken } }, false),
   saveFcmToken: (fcmToken) => request('/auth/fcm-token', { method: 'POST', body: { fcmToken } }),
+
+  uploadDocument: async (file) => {
+    const token = getToken();
+    const form  = new FormData();
+    form.append('document', file);
+    const res = await fetch(`${BASE}/auth/upload-document`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro no upload');
+    return data;
+  },
 
   // Map
   getMap: () => request('/map'),

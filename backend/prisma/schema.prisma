@@ -27,9 +27,11 @@ model User {
   cardExpMonth          Int?
   cardExpYear           Int?
 
-  fcmToken              String?
-  cpf                   String?  @unique
-  documentStatus        String   @default("pending")  // pending | approved | rejected
+  fcmToken                  String?
+  cpf                       String?  @unique
+  documentStatus            String   @default("pending")  // pending | approved | rejected
+  documentImageUrl          String?
+  documentRejectedReason    String?
 
   // ─── OAuth ────────────────────────────────────────────────────────────────
   oauthProvider         String?  // "google" | "facebook"

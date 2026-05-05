@@ -35,3 +35,6 @@ Thumbs.db
 
 # Claude Code
 .claude/
+
+# Uploads — arquivos enviados por usuarios (documentos, fotos)
+backend/uploads/

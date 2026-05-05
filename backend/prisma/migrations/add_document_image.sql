@@ -1,0 +1,2 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS "documentImageUrl" TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS "documentRejectedReason" TEXT;

@@ -2,6 +2,7 @@ const express = require('express');
 const prisma  = require('../db');
 const { adminMiddleware } = require('../middleware/auth');
 const { invalidateZoneCache, invalidateHubCache } = require('../services/geofence');
+const fcm     = require('../services/fcm');
 
 const router = express.Router();
 
@@ -252,6 +253,69 @@ router.post('/pix-recharges/:id/reject', adminMiddleware, async (req, res) => {
     await prisma.pixRecharge.update({
       where: { id: req.params.id },
       data:  { status: 'rejected', rejectedReason: req.body.reason || null },
+    });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Documentos de identidade ─────────────────────────────────────────────────
+
+// GET /api/admin/documents/image/:filename — serve imagem com autenticação admin
+router.get('/documents/image/:filename', adminMiddleware, (req, res) => {
+  const { UPLOADS_DIR } = require('../config');
+  const filename = path.basename(req.params.filename); // impede path traversal
+  const filepath = require('path').join(UPLOADS_DIR, 'documents', filename);
+  if (!require('fs').existsSync(filepath))
+    return res.status(404).json({ error: 'Arquivo não encontrado' });
+  res.sendFile(filepath);
+});
+
+// GET /api/admin/documents — usuários que enviaram documento
+router.get('/documents', adminMiddleware, async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      where:   { documentImageUrl: { not: null } },
+      select:  {
+        id: true, name: true, email: true, cpf: true,
+        documentStatus: true, documentImageUrl: true,
+        documentRejectedReason: true, updatedAt: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+    res.json(users);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/admin/documents/:userId/approve
+router.post('/documents/:userId/approve', adminMiddleware, async (req, res) => {
+  try {
+    const user = await prisma.user.update({
+      where: { id: req.params.userId },
+      data:  { documentStatus: 'approved', documentRejectedReason: null },
+    });
+    fcm.send(user.fcmToken, {
+      title: '✅ Identidade verificada!',
+      body:  'Seu documento foi aprovado. Boa viagem com o ZipRide!',
+      data:  { type: 'document_approved' },
+    });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/admin/documents/:userId/reject
+router.post('/documents/:userId/reject', adminMiddleware, async (req, res) => {
+  try {
+    const reason = req.body.reason || null;
+    const user = await prisma.user.update({
+      where: { id: req.params.userId },
+      data:  { documentStatus: 'rejected', documentRejectedReason: reason },
+    });
+    fcm.send(user.fcmToken, {
+      title: 'Documento não aprovado',
+      body:  reason
+        ? `Seu documento foi rejeitado: ${reason}. Envie um novo.`
+        : 'Seu documento foi rejeitado. Por favor, envie um novo.',
+      data:  { type: 'document_rejected' },
     });
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
