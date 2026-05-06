@@ -103,7 +103,7 @@ router.post('/:id/end', authMiddleware, async (req, res) => {
     if (!nearHub && !(await isInAllowedZone(scooter.lat, scooter.lng)))
       return res.status(400).json({ error: 'Encerre a corrida dentro de um hub ou zona permitida' });
 
-    const endTime = new Date();
+    const endTime = req.body.endTime ? new Date(req.body.endTime) : new Date();
     const cost    = calcCost(ride.startTime, endTime);
 
     const updatedRide = await prisma.ride.update({

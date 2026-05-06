@@ -127,6 +127,8 @@ export default function RidePage() {
   const [photoFile,    setPhotoFile]    = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [photoStep,    setPhotoStep]    = useState(false);
+  const [frozenCost,   setFrozenCost]   = useState(null);
+  const effectiveEndTime = useRef(null);
   const photoInputRef = useRef(null);
   const timerRef  = useRef(null);
   const socketRef = useRef(null);
@@ -173,13 +175,20 @@ export default function RidePage() {
 
   async function handleEndRide() {
     if (!rideData) return;
-    if (!photoFile) { setPhotoStep(true); return; }
+    if (!photoFile) {
+      // Congela o timer e registra o horário exato de encerramento
+      clearInterval(timerRef.current);
+      effectiveEndTime.current = new Date().toISOString();
+      setFrozenCost(pricing.unlockFee + (elapsed / 60) * pricing.pricePerMin);
+      setPhotoStep(true);
+      return;
+    }
 
     setEnding(true);
     try {
       // Upload da foto primeiro, depois encerra a corrida
       await api.uploadReturnPhoto(rideData.ride.id, photoFile);
-      const result = await api.endRide(rideData.ride.id);
+      const result = await api.endRide(rideData.ride.id, effectiveEndTime.current);
       clearInterval(timerRef.current);
       if (photoPreview) URL.revokeObjectURL(photoPreview);
       setSummary({ ride: result.ride, payment: result.payment });
@@ -189,7 +198,7 @@ export default function RidePage() {
     }
   }
 
-  const cost = `R$ ${(pricing.unlockFee + (elapsed / 60) * pricing.pricePerMin).toFixed(2)}`;
+  const cost = `R$ ${(frozenCost ?? (pricing.unlockFee + (elapsed / 60) * pricing.pricePerMin)).toFixed(2)}`;
 
   if (checking) return <div className="full-loader"><div className="spinner" /></div>;
 

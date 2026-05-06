@@ -1,6 +1,42 @@
+// Serviço unificado de push notifications.
+// No browser usa Firebase Web SDK; no app Android/iOS usa Capacitor nativo.
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
+// ─── Detecção de ambiente ─────────────────────────────────────────────────────
+function isNativePlatform() {
+  try { return !!(window.Capacitor?.isNativePlatform?.()); }
+  catch { return false; }
+}
+
+// ─── Nativo: Capacitor Push Notifications (Android / iOS) ────────────────────
+async function requestNativeToken() {
+  try {
+    const { PushNotifications } = await import('@capacitor/push-notifications');
+    const perm = await PushNotifications.requestPermissions();
+    if (perm.receive !== 'granted') return null;
+
+    await PushNotifications.register();
+
+    return new Promise((resolve) => {
+      PushNotifications.addListener('registration',      (t) => resolve(t.value));
+      PushNotifications.addListener('registrationError', ()  => resolve(null));
+    });
+  } catch {
+    return null;
+  }
+}
+
+function listenNativeForeground(callback) {
+  import('@capacitor/push-notifications').then(({ PushNotifications }) => {
+    PushNotifications.addListener('pushNotificationReceived', (n) => {
+      callback({ notification: { title: n.title, body: n.body } });
+    });
+  }).catch(() => {});
+  return () => {};
+}
+
+// ─── Web: Firebase Messaging ──────────────────────────────────────────────────
 const firebaseConfig = {
   apiKey:            process.env.REACT_APP_FIREBASE_API_KEY,
   authDomain:        process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
@@ -10,41 +46,47 @@ const firebaseConfig = {
   appId:             process.env.REACT_APP_FIREBASE_APP_ID,
 };
 
-let app       = null;
-let messaging = null;
+let firebaseApp = null;
+let messaging   = null;
 
-function isConfigured() {
+function isWebConfigured() {
   return !!process.env.REACT_APP_FIREBASE_API_KEY;
 }
 
-function getMessagingInstance() {
-  if (!isConfigured()) return null;
-  if (!app)       app       = initializeApp(firebaseConfig);
-  if (!messaging) messaging = getMessaging(app);
+function getWebMessaging() {
+  if (!isWebConfigured()) return null;
+  if (!firebaseApp) firebaseApp = initializeApp(firebaseConfig);
+  if (!messaging)   messaging   = getMessaging(firebaseApp);
   return messaging;
 }
 
-// Solicita permissão e retorna o FCM token do dispositivo
-export async function requestFcmToken() {
-  if (!isConfigured()) return null;
+async function requestWebToken() {
+  if (!isWebConfigured()) return null;
   try {
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return null;
-
-    const m = getMessagingInstance();
-    const token = await getToken(m, {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return null;
+    const m = getWebMessaging();
+    return await getToken(m, {
       vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY,
       serviceWorkerRegistration: await navigator.serviceWorker.register('/firebase-messaging-sw.js'),
-    });
-    return token || null;
+    }) || null;
   } catch {
     return null;
   }
 }
 
-// Listener para notificações recebidas com o app aberto
-export function onForegroundMessage(callback) {
-  if (!isConfigured()) return () => {};
-  const m = getMessagingInstance();
+function listenWebForeground(callback) {
+  if (!isWebConfigured()) return () => {};
+  const m = getWebMessaging();
+  if (!m) return () => {};
   return onMessage(m, callback);
+}
+
+// ─── Exports unificados ───────────────────────────────────────────────────────
+export async function requestFcmToken() {
+  return isNativePlatform() ? requestNativeToken() : requestWebToken();
+}
+
+export function onForegroundMessage(callback) {
+  return isNativePlatform() ? listenNativeForeground(callback) : listenWebForeground(callback);
 }

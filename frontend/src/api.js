@@ -103,7 +103,7 @@ const api = {
 
   // Rides
   startRide:    (scooterId) => request('/rides/start',         { method: 'POST', body: { scooterId } }),
-  endRide:      (rideId)    => request(`/rides/${rideId}/end`, { method: 'POST' }),
+  endRide:      (rideId, endTime) => request(`/rides/${rideId}/end`, { method: 'POST', body: endTime ? { endTime } : {} }),
   getActiveRide: ()         => request('/rides/active'),
   getMyRides:   ()          => request('/rides/my'),
   getPricing:   ()          => request('/rides/pricing'),

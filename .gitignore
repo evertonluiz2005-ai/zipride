@@ -38,3 +38,12 @@ Thumbs.db
 
 # Uploads — arquivos enviados por usuarios (documentos, fotos)
 backend/uploads/
+
+# Capacitor Android project (gerado localmente)
+frontend/android/
+
+# Gradle local
+gradle-8.14/
+
+# npm artefato acidental
+backend/npm
