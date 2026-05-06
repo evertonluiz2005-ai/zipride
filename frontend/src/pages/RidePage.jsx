@@ -114,16 +114,20 @@ function RideSummaryModal({ ride, payment, onClose }) {
 
 // ─── Página de corrida ────────────────────────────────────────────────────────
 export default function RidePage() {
-  const [rideData,    setRideData]    = useState(null);
-  const [elapsed,     setElapsed]     = useState(0);
-  const [scooterPos,  setScooterPos]  = useState(null);
-  const [ending,      setEnding]      = useState(false);
-  const [toast,       setToast]       = useState('');
-  const [pricing,     setPricing]     = useState({ unlockFee: 3, pricePerMin: 0.5 });
-  const [summary,     setSummary]     = useState(null);
-  const [checking,    setChecking]    = useState(true);
-  const [zones,       setZones]       = useState([]);
-  const [hubs,        setHubs]        = useState([]);
+  const [rideData,     setRideData]     = useState(null);
+  const [elapsed,      setElapsed]      = useState(0);
+  const [scooterPos,   setScooterPos]   = useState(null);
+  const [ending,       setEnding]       = useState(false);
+  const [toast,        setToast]        = useState('');
+  const [pricing,      setPricing]      = useState({ unlockFee: 3, pricePerMin: 0.5 });
+  const [summary,      setSummary]      = useState(null);
+  const [checking,     setChecking]     = useState(true);
+  const [zones,        setZones]        = useState([]);
+  const [hubs,         setHubs]         = useState([]);
+  const [photoFile,    setPhotoFile]    = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoStep,    setPhotoStep]    = useState(false);
+  const photoInputRef = useRef(null);
   const timerRef  = useRef(null);
   const socketRef = useRef(null);
   const navigate  = useNavigate();
@@ -160,13 +164,24 @@ export default function RidePage() {
     return () => { clearInterval(timerRef.current); socket.disconnect(); };
   }, []);
 
+  function handlePhotoCapture(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  }
+
   async function handleEndRide() {
     if (!rideData) return;
+    if (!photoFile) { setPhotoStep(true); return; }
+
     setEnding(true);
     try {
+      // Upload da foto primeiro, depois encerra a corrida
+      await api.uploadReturnPhoto(rideData.ride.id, photoFile);
       const result = await api.endRide(rideData.ride.id);
       clearInterval(timerRef.current);
-      // Mostrar modal de resumo com status de pagamento
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
       setSummary({ ride: result.ride, payment: result.payment });
     } catch (err) {
       showToast(`❌ ${err.message}`);
@@ -250,8 +265,32 @@ export default function RidePage() {
           · <span style={{ color: 'var(--accent)' }}>cobrado no cartão</span>
         </div>
 
-        <button className="btn-danger" onClick={handleEndRide} disabled={ending}>
-          {ending ? '⏳ Encerrando e cobrando...' : '🏁 Encerrar corrida'}
+        {/* Etapa de foto */}
+        {photoStep && (
+          <div style={{ marginBottom: 12, background: 'var(--surface)', borderRadius: 12, padding: 14, border: '1px solid var(--border)' }}>
+            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>📷 Foto do patinete</div>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
+              Tire uma foto mostrando onde você está deixando o patinete.
+            </p>
+            {photoPreview && (
+              <img src={photoPreview} alt="Prévia" style={{ width: '100%', borderRadius: 8, marginBottom: 8, maxHeight: 180, objectFit: 'cover' }} />
+            )}
+            <input ref={photoInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoCapture} style={{ display: 'none' }} />
+            <button
+              onClick={() => photoInputRef.current?.click()}
+              style={{ width: '100%', padding: '10px', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg)', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: 'var(--accent)', fontFamily: 'var(--font)', marginBottom: 8 }}
+            >
+              {photoFile ? '🔄 Trocar foto' : '📷 Tirar foto'}
+            </button>
+          </div>
+        )}
+
+        <button
+          className="btn-danger"
+          onClick={handleEndRide}
+          disabled={ending || (photoStep && !photoFile)}
+        >
+          {ending ? '⏳ Encerrando...' : photoStep && photoFile ? '🏁 Confirmar encerramento' : '🏁 Encerrar corrida'}
         </button>
 
         <p className="ride-warning">⚠️ Encerre dentro de um hub ou zona permitida</p>

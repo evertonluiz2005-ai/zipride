@@ -6,6 +6,7 @@ import { io } from 'socket.io-client';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import BottomNav from '../components/BottomNav';
+import QRScanner from '../components/QRScanner';
 
 // Ícones customizados
 const scooterIcon = (battery) => {
@@ -32,15 +33,16 @@ function FlyToUser({ pos }) {
 }
 
 export default function MapPage() {
-  const [scooters, setScooters] = useState([]);
-  const [zones, setZones] = useState([]);
-  const [hubs, setHubs] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [userPos, setUserPos] = useState(null);
-  const [activeRide, setActiveRide] = useState(null);
-  const [showQR, setShowQR] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState('');
+  const [scooters,    setScooters]    = useState([]);
+  const [zones,       setZones]       = useState([]);
+  const [hubs,        setHubs]        = useState([]);
+  const [selected,    setSelected]    = useState(null);
+  const [userPos,     setUserPos]     = useState(null);
+  const [activeRide,  setActiveRide]  = useState(null);
+  const [showQR,      setShowQR]      = useState(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const [loading,     setLoading]     = useState(false);
+  const [toast,       setToast]       = useState('');
   const socketRef = useRef(null);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -90,6 +92,21 @@ export default function MapPage() {
     setShowQR(scooter);
   }
 
+  async function handleQRResult(text) {
+    setShowScanner(false);
+    const scooterId = text.trim();
+    let scooter = scooters.find(s => s.id === scooterId);
+    if (!scooter) {
+      try { scooter = await api.getScooter(scooterId); }
+      catch { showToast('Patinete não encontrado'); return; }
+    }
+    if (scooter.status !== 'available') {
+      showToast(scooter.status === 'in_use' ? 'Patinete em uso' : 'Patinete indisponível');
+      return;
+    }
+    handleUnlock(scooter);
+  }
+
   async function confirmUnlock(scooter) {
     setLoading(true);
     try {
@@ -110,6 +127,7 @@ export default function MapPage() {
   return (
     <div className="screen">
       {toast && <div className="toast">{toast}</div>}
+      {showScanner && <QRScanner onResult={handleQRResult} onClose={() => setShowScanner(false)} />}
 
       {/* Header */}
       <div className="map-header">
@@ -120,9 +138,22 @@ export default function MapPage() {
         <button className="btn-icon" onClick={() => navigate('/history')}>📋</button>
       </div>
 
-      {/* Mapa */}
-      <div className="map-wrapper">
-        <MapContainer
+      {/* Botão flutuante de scan QR */}
+      <div className="map-wrapper" style={{ position: 'relative' }}>
+        <button
+          onClick={() => setShowScanner(true)}
+          style={{
+            position: 'absolute', bottom: 16, right: 16, zIndex: 500,
+            background: 'var(--accent)', color: '#fff', border: 'none',
+            borderRadius: 16, padding: '12px 18px', fontSize: 14,
+            fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(255,82,0,0.4)',
+            display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font)',
+          }}
+        >
+          <span style={{ fontSize: 18 }}>⬛</span> Escanear QR
+        </button>
+
+      <MapContainer
           key="map-page"
           center={CAMPO_MOURAO}
           zoom={15}
@@ -191,7 +222,7 @@ export default function MapPage() {
             </Marker>
           ))}
         </MapContainer>
-      </div>
+      </div>{/* fecha map-wrapper */}
 
       {/* Legenda */}
       <div className="map-legend">

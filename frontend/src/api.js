@@ -66,6 +66,20 @@ const api = {
   logout:   (refreshToken) => request('/auth/logout',  { method: 'POST', body: { refreshToken } }, false),
   saveFcmToken: (fcmToken) => request('/auth/fcm-token', { method: 'POST', body: { fcmToken } }),
 
+  uploadReturnPhoto: async (rideId, file) => {
+    const token = getToken();
+    const form  = new FormData();
+    form.append('photo', file);
+    const res = await fetch(`${BASE}/rides/${rideId}/photo`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro no upload');
+    return data;
+  },
+
   uploadDocument: async (file) => {
     const token = getToken();
     const form  = new FormData();

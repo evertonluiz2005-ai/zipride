@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polygon, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { io } from 'socket.io-client';
+import QRCode from 'react-qr-code';
 import api from '../api';
 
 function statusColor(s) {
@@ -33,6 +34,7 @@ export default function Fleet() {
   const [zones,        setZones]        = useState([]);
   const [hubs,         setHubs]         = useState([]);
   const [selected,     setSelected]     = useState(null);
+  const [qrScooter,    setQrScooter]    = useState(null);
   const [toast,        setToast]        = useState('');
   const [showForm,     setShowForm]     = useState(false);
   const [form,         setForm]         = useState(EMPTY_FORM);
@@ -328,7 +330,9 @@ export default function Fleet() {
                   <div style={{ display: 'flex', gap: 4 }}>
                     <button className="action-btn lock" onClick={(e) => { e.stopPropagation(); handleLock(s.id); }}>🔒</button>
                     <button className="action-btn unlock" onClick={(e) => { e.stopPropagation(); handleUnlock(s.id); }}>🔓</button>
-                    <button className="action-btn" style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}
+                    <button className="action-btn" style={{ background: 'rgba(255,82,0,0.1)', color: 'var(--accent)' }}
+                      onClick={(e) => { e.stopPropagation(); setQrScooter(s); }} title="Ver QR Code">⬛</button>
+                    <button className="action-btn" style={{ background: 'rgba(220,38,38,0.1)', color: 'var(--danger)' }}
                       onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}>🗑️</button>
                   </div>
                 </td>
@@ -342,6 +346,37 @@ export default function Fleet() {
           </tbody>
         </table>
       </div>
+    </div>
+
+      {/* Modal QR Code */}
+      {qrScooter && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 32, maxWidth: 340, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)', textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>{qrScooter.name}</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)' }}>ID: {qrScooter.id}</div>
+              </div>
+              <button onClick={() => setQrScooter(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--muted)' }}>✕</button>
+            </div>
+
+            <div style={{ background: '#fff', padding: 16, display: 'inline-block', border: '1px solid var(--border)', borderRadius: 12 }}>
+              <QRCode value={qrScooter.id} size={200} />
+            </div>
+
+            <p style={{ fontSize: 12, color: 'var(--muted)', margin: '14px 0' }}>
+              Cole este QR Code no patinete. O usuário escaneará para desbloqueá-lo.
+            </p>
+
+            <button
+              onClick={() => window.print()}
+              style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              🖨️ Imprimir QR Code
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

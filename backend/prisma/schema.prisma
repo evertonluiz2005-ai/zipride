@@ -120,6 +120,8 @@ model Ride {
   pricePerMin Float     @default(0.5)
   nearestHub  String?
 
+  returnPhotoUrl  String?  // foto tirada ao devolver o patinete
+
   // ─── Stripe ───────────────────────────────────────────────────────────────
   paymentStatus   String?  // pending | paid | failed | free
   paymentIntentId String?  // pi_xxx do Stripe

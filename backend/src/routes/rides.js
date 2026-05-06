@@ -1,10 +1,35 @@
 const express  = require('express');
+const path     = require('path');
+const fs       = require('fs');
+const multer   = require('multer');
 const prisma   = require('../db');
 const { authMiddleware }             = require('../middleware/auth');
 const { isInAllowedZone, isNearHub } = require('../services/geofence');
 const { refreshScooter }             = require('../services/gpsSimulator');
 const { chargeRide }                 = require('../services/stripe');
 const fcm                            = require('../services/fcm');
+const { UPLOADS_DIR }                = require('../config');
+
+// ─── Multer — foto de devolução ───────────────────────────────────────────────
+const RIDE_PHOTOS_DIR = path.join(UPLOADS_DIR, 'rides');
+fs.mkdirSync(RIDE_PHOTOS_DIR, { recursive: true });
+
+const ridePhotoStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, RIDE_PHOTOS_DIR),
+  filename:    (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `${req.params.id}-${Date.now()}${ext}`);
+  },
+});
+
+const uploadRidePhoto = multer({
+  storage: ridePhotoStorage,
+  limits:  { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Apenas imagens são permitidas'));
+  },
+});
 
 const router = express.Router();
 
@@ -159,6 +184,25 @@ router.get('/active', authMiddleware, async (req, res) => {
 // GET /api/rides/pricing
 router.get('/pricing', (_req, res) => {
   res.json({ unlockFee: UNLOCK_FEE, pricePerMin: PRICE_PER_MIN });
+});
+
+// POST /api/rides/:id/photo — foto de devolução do patinete
+router.post('/:id/photo', authMiddleware, (req, res, next) => {
+  uploadRidePhoto.single('photo')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    next();
+  });
+}, async (req, res) => {
+  try {
+    const ride = await prisma.ride.findUnique({ where: { id: req.params.id } });
+    if (!ride)                       return res.status(404).json({ error: 'Corrida não encontrada' });
+    if (ride.userId !== req.user.id) return res.status(403).json({ error: 'Não autorizado' });
+    if (!req.file)                   return res.status(400).json({ error: 'Nenhuma foto enviada' });
+
+    const returnPhotoUrl = `/uploads/rides/${req.file.filename}`;
+    await prisma.ride.update({ where: { id: req.params.id }, data: { returnPhotoUrl } });
+    res.json({ returnPhotoUrl });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 module.exports = router;

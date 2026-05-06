@@ -260,6 +260,16 @@ router.post('/pix-recharges/:id/reject', adminMiddleware, async (req, res) => {
 
 // ─── Documentos de identidade ─────────────────────────────────────────────────
 
+// GET /api/admin/ride-photo/:filename — foto de devolução (autenticação admin)
+router.get('/ride-photo/:filename', adminMiddleware, (req, res) => {
+  const { UPLOADS_DIR } = require('../config');
+  const filename = path.basename(req.params.filename);
+  const filepath = require('path').join(UPLOADS_DIR, 'rides', filename);
+  if (!require('fs').existsSync(filepath))
+    return res.status(404).json({ error: 'Arquivo não encontrado' });
+  res.sendFile(filepath);
+});
+
 // GET /api/admin/documents/image/:filename — serve imagem com autenticação admin
 router.get('/documents/image/:filename', adminMiddleware, (req, res) => {
   const { UPLOADS_DIR } = require('../config');
